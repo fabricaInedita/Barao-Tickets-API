@@ -1,4 +1,5 @@
 ﻿using BaraoFeedback.Application.DTOs.Ticket;
+using BaraoFeedback.Application.Extensions;
 using BaraoFeedback.Application.Interfaces;
 using BaraoFeedback.Infra.Context;
 using BaraoFeedback.Infra.Querys;
@@ -19,7 +20,7 @@ public class TicketRepository : GenericRepository<Domain.Entities.Ticket>, ITick
         UserId = _context._httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
     }
 
-    public async Task<List<TicketResponse>> GetTicketAsync(TicketQuery query)
+    public async Task<IQueryable<TicketResponse>> GetTicketAsync(TicketQuery query)
     {
         var tickets = (from data in _context.Ticket
                       .AsNoTracking()
@@ -28,6 +29,7 @@ public class TicketRepository : GenericRepository<Domain.Entities.Ticket>, ITick
                        {
                            CategoryName = data.TicketCategory.Description,
                            Description = data.Description,
+                           Processed = data.Processed,
                            CreatedAt = data.CreatedAt.ToString("dd/MM/yyyy"),
                            InstitutionName = data.Institution.Name,
                            LocationName = data.Location.Name,
@@ -35,7 +37,7 @@ public class TicketRepository : GenericRepository<Domain.Entities.Ticket>, ITick
                            StudentCode = data.ApplicationUser.UserName,
                            StudentName = data.ApplicationUser.Name,
                            TicketId = data.Id,
-                       }).ToList();
+                       });
 
         return tickets;
     } 
@@ -52,7 +54,9 @@ public class TicketRepository : GenericRepository<Domain.Entities.Ticket>, ITick
                            CreatedAt = data.CreatedAt.ToString("dd/MM/yyyy"),
                            InstitutionName = data.Institution.Name,
                            LocationName = data.Location.Name,
+                           Processed = data.Processed,
                            Title = data.Title,
+                           StudendMail = data.ApplicationUser.Email,
                            StudentCode = data.ApplicationUser.UserName,
                            StudentName = data.ApplicationUser.Name,
                            TicketId = data.Id,

@@ -7,8 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BaraoFeedback.Api.Controllers;
 
 [ApiController]
-[Route("/ticket")]
-[Authorize]
+[Route("/ticket")] 
 public class TicketController : ControllerBase
 {
     private readonly ITicketService _tickerService;
@@ -53,6 +52,18 @@ public class TicketController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPatch]
+    [Route("process-ticket")]
+    public async Task<ActionResult<TicketResponse>> ProcessTicketAsync([FromQuery] long ticketId,[FromBody] UpdateTicket ticket)
+    {
+        var response = await _tickerService.ProcessTicketAsync(ticketId, ticket.Status);
+
+        if (!response.Sucess)
+            return BadRequest(response);
+
+        return Ok(response);
+    }
+
     [HttpDelete("delete-ticket")]
     public async Task<IActionResult> DeleteInstitutionAsync(long ticketId)
     {
@@ -64,3 +75,4 @@ public class TicketController : ControllerBase
         return Ok(response);
     }
 }
+

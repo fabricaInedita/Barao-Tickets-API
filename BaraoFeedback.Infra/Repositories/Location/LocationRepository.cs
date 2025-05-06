@@ -1,5 +1,6 @@
 ﻿using BaraoFeedback.Application.DTOs.Institution;
 using BaraoFeedback.Application.DTOs.Location;
+using BaraoFeedback.Application.DTOs.Shared;
 using BaraoFeedback.Application.Interfaces;
 using BaraoFeedback.Infra.Context;
 using BaraoFeedback.Infra.Repositories.Shared;
@@ -33,5 +34,19 @@ public class LocationRepository : GenericRepository<Domain.Entities.Location>, I
                     }).FirstOrDefault();
 
         return data;
+    }
+
+    public async Task<List<OptionResponse>> GetLocationOptionAsync(long institutionId)
+    {
+        var categoriesTickets = (from data in _context.Location
+                      .AsNoTracking()
+                      .Where(x => x.InstitutionId == institutionId)
+                                 select new OptionResponse()
+                                 {
+                                     Description = data.Name,
+                                     Value = data.Id,
+                                 }).ToList();
+
+        return categoriesTickets;
     }
 }

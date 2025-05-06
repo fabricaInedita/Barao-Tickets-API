@@ -5,7 +5,10 @@ namespace BaraoFeedback.Application.Services.User;
 
 public interface IIdentityService
 {
+    Task<DefaultResponse> ForgotPassword(ForgotPasswordDto model);
+    Task<DefaultResponse> UpdateNameAsync(UpdateUserRequest model);
     Task<DefaultResponse> DeleteUser(string id);
+    Task<bool> UnlockUser(string userId, string token);
     Task<DefaultResponse> GetUsers();
     Task<DefaultResponse> UpdatePasswordAsync(UpdatePassword dto);
     Task<UserLoginResponse> LoginAsync(UserLoginRequest userLogin);

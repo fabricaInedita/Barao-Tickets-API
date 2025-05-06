@@ -17,10 +17,20 @@ public class LocationController : ControllerBase
     }
 
     [HttpGet("get-location/")]
-    public async Task<IActionResult> GetLocationAsync(long intitutionId)
+    public async Task<IActionResult> GetLocationAsync([FromQuery] LocationQuery query)
     {
-        var response = await _locationService.GetLocationAsync(intitutionId);
+        var response = await _locationService.GetLocationAsync(query);
 
+        if (!response.Sucess)
+            return BadRequest(response);
+
+        return Ok(response);
+    }
+
+    [HttpGet("get-location-options/")]
+    public async Task<IActionResult> GetLocationOptionsAsync([FromQuery] long institutionId)
+    {
+        var response = await _locationService.GetLocationOptionsAsync(institutionId);
         if (!response.Sucess)
             return BadRequest(response);
 

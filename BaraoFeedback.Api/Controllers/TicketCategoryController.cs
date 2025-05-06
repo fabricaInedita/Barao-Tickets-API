@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace BaraoFeedback.Api.Controllers;
 
 [ApiController]
-[Route("category/")]
 [Authorize]
+[Route("category/")]
 public class TicketCategoryController : ControllerBase
 {
     private readonly ITicketCategoryService ticketCategoryService;
@@ -30,10 +30,22 @@ public class TicketCategoryController : ControllerBase
         return Ok(response);
     }
     [HttpGet]
-    [Route("get-category")]
+    [Route("get-ticket-category-options")]
     public async Task<IActionResult> GetCategoryAsync()
     {
         var response = await ticketCategoryService.GetCategoryAsync();
+
+        if (!response.Sucess)
+            return BadRequest(response);
+
+        return Ok(response);
+    }
+
+    [HttpGet]
+    [Route("get-category")]
+    public async Task<IActionResult> GetCategoryListAsync([FromQuery] BaseGetRequest request)
+    {
+        var response = await ticketCategoryService.GetCategoryListAsync(request);
 
         if (!response.Sucess)
             return BadRequest(response);

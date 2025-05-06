@@ -1,29 +1,51 @@
 ﻿using BaraoFeedback.Application.DTOs.Shared;
 using BaraoFeedback.Application.DTOs.User;
+using BaraoFeedback.Application.Services.Email;
 using BaraoFeedback.Application.Services.User;
 using BaraoFeedback.Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options; 
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Security.Policy; 
 
 public class IdentityService : IIdentityService
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IHttpContextAccessor _httpContextAccessor; 
+    private readonly IEmailService _emailSender;
+    private readonly IPasswordHasher<ApplicationUser> _passwordHasher;
     private readonly JwtOptions _jwtOptions;
 
-    public IdentityService(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager, IOptions<JwtOptions> jwtOptions, IHttpContextAccessor httpContextAccessor)
+    public IdentityService(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager, IOptions<JwtOptions> jwtOptions, IHttpContextAccessor httpContextAccessor, IEmailService emailSender, IPasswordHasher<ApplicationUser> passwordHasher)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _jwtOptions = jwtOptions.Value;
         _httpContextAccessor = httpContextAccessor;
+        _emailSender = emailSender;
+        _passwordHasher = passwordHasher;
     }
 
+    public async Task<DefaultResponse> UpdateNameAsync(UpdateUserRequest model)
+    {
+        var response = new DefaultResponse();
+
+        var user = await _userManager.FindByIdAsync(model.UserId);
+
+        user.Name = model.Name;
+
+        var result = await _userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+            response.Errors.AddError("Erro ao alterar nome do usuário");
+
+        return response;
+    }
     public async Task<UserLoginResponse> LoginAsync(UserLoginRequest userLogin)
     {
         SignInResult signInResult = await _signInManager.PasswordSignInAsync(userLogin.UserName, userLogin.Password, isPersistent: false, lockoutOnFailure: true);
@@ -67,15 +89,18 @@ public class IdentityService : IIdentityService
             UserName = request.Email,
         };
 
+        user.EmailConfirmed = true;
+
         var password = GeneratePassword();
         IdentityResult result = await _userManager.CreateAsync(user, password);
 
-        var response = await ValidateRegisterAsync(result);
+        var response = await ValidateRegisterAsync(result, user.Email);
 
         if (!response.Success)
             return response;
 
         response.Data = password;
+        await _emailSender.SendPassword(user.Email, user.Name, password);
 
         return response;
     }
@@ -100,7 +125,10 @@ public class IdentityService : IIdentityService
 
         IdentityResult result = await _userManager.CreateAsync(user, userRegister.Password);
 
-        return await ValidateRegisterAsync(result);
+        if(result.Succeeded)
+            await SendConfirmMail(email);
+
+        return await ValidateRegisterAsync(result, email);
     }
 
     public async Task<DefaultResponse> GetUsers()
@@ -126,7 +154,7 @@ public class IdentityService : IIdentityService
         return new DefaultResponse();
     }
 
-    private async Task<UserRegisterResponse> ValidateRegisterAsync(IdentityResult result)
+    private async Task<UserRegisterResponse> ValidateRegisterAsync(IdentityResult result, string email)
     {
 
         UserRegisterResponse userRegisterResponse = new UserRegisterResponse(result.Succeeded);
@@ -150,7 +178,9 @@ public class IdentityService : IIdentityService
                         break;
 
                     case "DuplicateUserName":
-                        userRegisterResponse.Errors.AddError("O email informado já foi cadastrado!");
+                        userRegisterResponse.Errors.AddError("O email informado já foi cadastrado! Verifique seu email institucional para ativar a conta.");
+                        await SendConfirmMail(email);
+
                         break;
 
                     default:
@@ -245,5 +275,74 @@ public class IdentityService : IIdentityService
         return new string(password);
     }
 
+    public async Task<string> SendConfirmMail(string email)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null) return null;
 
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+        var encodedToken = WebUtility.UrlEncode(token);
+         
+        var confirmationLink = $"https://baraotickets-dxcafcc6h9h0aga6.eastus2-01.azurewebsites.net/user/ConfirmEmail?userId={user.Id}&token={encodedToken}";
+        await _emailSender.SendConfirmMail(email, user.Name, confirmationLink);
+        return confirmationLink;
+    }
+
+    public async Task<bool> UnlockUser(string userId, string token)
+    { 
+        var user = await _userManager.FindByIdAsync(userId);
+
+        token = WebUtility.UrlDecode(token);
+        user.EmailConfirmed = true;
+
+        var result = await _userManager.UpdateAsync(user);
+
+        if (result.Succeeded)
+            return true;
+
+        return false;
+    }
+
+    public async Task<DefaultResponse> ForgotPassword(ForgotPasswordDto model)
+    {
+        var response = new DefaultResponse();
+        var user = await _userManager.FindByEmailAsync(model.Email);
+
+        if (user == null)
+        {
+            response.Errors.AddError("Usuário não encontrado.");
+            return response;
+        }
+
+        var novaSenha = GeneratePassword();
+
+        var hash = _passwordHasher.HashPassword(user, novaSenha);
+        user.PasswordHash = hash;
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+                response.Errors.AddError(error.Description);
+            return response;
+        }
+        await _emailSender.SendForgotPasswordEmail(model.Email, user.Name, novaSenha);
+
+        return response;
+    }
+    private string GeneratePassword(int length = 10)
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%&";
+        var random = new Random();
+        return new string(Enumerable.Repeat(chars, length)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+
+
+}
+
+public class ForgotPasswordDto
+{
+    public string Email { get; set; }
 }

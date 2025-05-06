@@ -1,4 +1,5 @@
 ﻿using BaraoFeedback.Application.DTOs.Category;
+using BaraoFeedback.Application.DTOs.Shared;
 using BaraoFeedback.Application.Interfaces;
 using BaraoFeedback.Infra.Context;
 using BaraoFeedback.Infra.Querys;
@@ -16,7 +17,7 @@ public class TicketCategoryRepository : GenericRepository<Domain.Entities.Ticket
         _context = context;
     }
 
-    public async Task<List<TicketCategoryResponse>> GetTicketCategoryAsync(TicketCategoryQuery query)
+    public async Task<IQueryable<TicketCategoryResponse>> GetTicketCategoryAsync(TicketCategoryQuery query)
     {
         var categoriesTickets = (from data in _context.TicketCategory
                       .AsNoTracking()
@@ -26,11 +27,24 @@ public class TicketCategoryRepository : GenericRepository<Domain.Entities.Ticket
                                      Description = data.Description,
                                      DescriptionId = data.Id,
                                      TicketQuantity = data.Tickets.Count()
+                                 });
+
+        return categoriesTickets;
+    }
+    public async Task<List<OptionResponse>> GetCategoryAsync()
+    {
+        var categoriesTickets = (from data in _context.TicketCategory
+                      .AsNoTracking()
+                                 select new OptionResponse()
+                                 {
+                                     Description = data.Description,
+                                     Value = data.Id,
                                  }).ToList();
 
         return categoriesTickets;
     }
-    public async Task<List<CategoryResponse>> GetCategoryAsync()
+
+    public async Task<IQueryable<CategoryResponse>> GetCategoryListAsync()
     {
         var categoriesTickets = (from data in _context.TicketCategory
                       .AsNoTracking()
@@ -38,7 +52,7 @@ public class TicketCategoryRepository : GenericRepository<Domain.Entities.Ticket
                                  {
                                      Description = data.Description,
                                      CategoryId = data.Id,
-                                 }).ToList();
+                                 });
 
         return categoriesTickets;
     }

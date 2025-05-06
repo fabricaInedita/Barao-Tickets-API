@@ -1,6 +1,9 @@
 ﻿using BaraoFeedback.Application.DTOs.User;
+using BaraoFeedback.Application.Services.Email;
 using BaraoFeedback.Application.Services.User;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Web;
 
 namespace BaraoFeedback.Api.Controllers;
 
@@ -18,7 +21,7 @@ public class UserController : ControllerBase
     public async Task<IActionResult> RegisterStudentAsync(StudentRegisterRequest request)
     {
         var response = await _userService.RegisterStudentAsync("student", request);
-
+         
         if (!response.Success)
             return BadRequest(response);
 
@@ -81,4 +84,38 @@ public class UserController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpPatch]
+    [Route("user/update-name")]
+    public async Task<IActionResult> UpdateNameAsync(UpdateUserRequest model)
+    {
+        var response = await _userService.UpdateNameAsync(model);
+
+        if (!response.Sucess)
+            return BadRequest(response);
+
+        return Ok(response);
+    }
+    [HttpGet("/user/ConfirmEmail")]
+    public async Task<IActionResult> ConfirmEmail(string userId, string token)
+    {
+        var result = await _userService.UnlockUser(userId, token);
+
+        if(result)
+            return Redirect("https://barao-tickets-ui.vercel.app/login");
+
+        return BadRequest("Token expirado!");
+    }
+
+    [HttpPost("/user/forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto model)
+    {
+        var response = await _userService.ForgotPassword(model);
+
+        if (!response.Sucess)
+            return BadRequest(response);
+
+        return Ok(response); 
+    } 
+    
 }

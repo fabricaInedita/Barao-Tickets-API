@@ -21,4 +21,10 @@
     <ProjectReference Include="..\BaraoFeedback.Infra\BaraoFeedback.Infra.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="selfsigned.crt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

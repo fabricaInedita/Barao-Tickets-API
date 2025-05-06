@@ -1,5 +1,6 @@
 ﻿using BaraoFeedback.Application.DTOs.Shared;
 using BaraoFeedback.Application.DTOs.Ticket;
+using BaraoFeedback.Application.Extensions;
 using BaraoFeedback.Application.Interfaces;
 using BaraoFeedback.Application.Services.Email;
 using BaraoFeedback.Infra.Querys; 
@@ -16,25 +17,42 @@ public class TicketService : ITicketService
         _emailService = emailService;
     }
 
-    public async Task<DefaultResponse> GetTicketAsync(TicketQuery query)
+    public async Task<BaseResponse<List<TicketResponse>>> GetTicketAsync(TicketQuery query)
     {
-        var response = new DefaultResponse();
-
-        response.Data = await _ticketRepository.GetTicketAsync(query);
-
+        var response = new BaseResponse<List<TicketResponse>>();
+        var data = (await _ticketRepository.GetTicketAsync(query))
+            .Pagination<TicketResponse>(new BaseGetRequest() { Page = query.Page, PageSize = query.PageSize, SearchInput = query.SearchInput});
+        var totalRecord = (await _ticketRepository.GetTicketAsync(query)).Count();
+        
+        response.TotalRecords = totalRecord;
+        response.PageSize = data.Count();
+        response.Page = query.Page;  
+        response.Data = data.ToList();
         return response;
     }
-    public async Task<DefaultResponse> GetTicketByIdAsync(long id)
+    public async Task<BaseResponse<TicketResponse>> GetTicketByIdAsync(long id)
     {
-        var response = new DefaultResponse();
+        var response = new BaseResponse<TicketResponse>();
 
         response.Data = await _ticketRepository.GetTicketByIdAsync(id);
 
         return response;
     }
-    public async Task<DefaultResponse> PostTicketAsync(TicketInsertRequest request)
+    public async Task<BaseResponse<bool>> ProcessTicketAsync(long id, bool status)
     {
-        var response = new DefaultResponse();
+        var response = new BaseResponse<bool>();
+
+        var ticket = await _ticketRepository.GetByIdAsync(id);
+
+        ticket.Processed = status;
+
+        response.Data = await _ticketRepository.UpdateAsync(ticket, default);
+
+        return response;
+    }
+    public async Task<BaseResponse<bool>> PostTicketAsync(TicketInsertRequest request)
+    {
+        var response = new BaseResponse<bool>();
         var entity = new Domain.Entities.Ticket()
         {
             ApplicationUserId = _ticketRepository.GetUserId(),
@@ -44,16 +62,18 @@ public class TicketService : ITicketService
             LocationId = request.LocationId,
             Title = request.Title, 
         };
-        response.Data = await _ticketRepository.PostTicketAsync(entity);
+        var result = await _ticketRepository.PostTicketAsync(entity);
+        response.Data = result;
 
-   //     _emailService.SendEmail("Marcos", "marcosfelipehd4@gmail.com");
+        var ticket = await _ticketRepository.GetTicketByIdAsync(entity.Id);
+        await _emailService.SendEmail(ticket);
 
         return response;
     }
 
-    public async Task<DefaultResponse> DeleteAsync(long entityId)
+    public async Task<BaseResponse<bool>> DeleteAsync(long entityId)
     {
-        var response = new DefaultResponse();
+        var response = new BaseResponse<bool>();
         var entity = await _ticketRepository.GetByIdAsync(entityId);
         response.Data = await _ticketRepository.DeleteAsync(entity, default);
 
