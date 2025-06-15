@@ -18,9 +18,9 @@ public class TicketQuery : BaseGetRequest
     {
         var predicate = PredicateBuilder.True<Ticket>();
 
-        var process = Process ?? false;
-
-        predicate = predicate.And(x => x.Processed == process);
+        if(Process is not null)
+            predicate = predicate.And(x => x.Processed == Process);
+       
 
         if (InstitutionId is not null && InstitutionId > 0)
             predicate = predicate.And(x => x.InstitutionId == InstitutionId);

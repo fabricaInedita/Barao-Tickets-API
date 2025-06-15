@@ -59,9 +59,22 @@ public class LocationController : ControllerBase
         return Ok(response);
     }
     [HttpDelete("delete-location/")]
-    public async Task<IActionResult> DeleteLocationAsync(long institutionId)
+    public async Task<IActionResult> DeleteLocationAsync(long locationId)
     {
-        var response = await _locationService.DeleteAsync(institutionId);
+        var response = await _locationService.DeleteAsync(locationId);
+
+        if (!response.Sucess)
+            return BadRequest(response);
+
+        return Ok(response);
+    }  
+    
+    [HttpPut("update-location/")]
+    public async Task<IActionResult> UpdateLocationAsync
+        ([FromBody] LocationUpdateRequest location,
+        [FromQuery] long locationId)
+    {
+        var response = await _locationService.UpdateAsync(locationId, location);
 
         if (!response.Sucess)
             return BadRequest(response);

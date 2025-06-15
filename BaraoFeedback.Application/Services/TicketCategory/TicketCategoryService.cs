@@ -3,7 +3,6 @@ using BaraoFeedback.Application.DTOs.Shared;
 using BaraoFeedback.Application.Extensions;
 using BaraoFeedback.Application.Interfaces;
 using BaraoFeedback.Infra.Querys;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace BaraoFeedback.Application.Services.TicketCategory;
 
@@ -20,11 +19,12 @@ public class TicketCategoryService : ITicketCategoryService
     {
         var response = new BaseResponse<bool>();
 
-        response.Data = await _ticketCategoryRepository.PostCategoryTicketAsync(new Domain.Entities.TicketCategory()
-        {
-            Description = request.Description,
-
-        });
+        response.Data = await _ticketCategoryRepository.PostCategoryTicketAsync
+            (new Domain.Entities.TicketCategory()
+            {
+                Description = request.Description,
+                IsActive = true
+            });
 
         return response;
     }
@@ -43,8 +43,8 @@ public class TicketCategoryService : ITicketCategoryService
 
         if (query.IsDescending is null)
             response.Data = data.ToList().OrderBy(x => x.CreatedAt).ToList();
-     
-        if(query.IsDescending is not null)
+
+        if (query.IsDescending is not null)
         {
             if (query.IsDescending.Value)
                 response.Data = data.ToList().OrderByDescending(x => x.TicketQuantity).ToList();
@@ -68,7 +68,7 @@ public class TicketCategoryService : ITicketCategoryService
 
         response.Data = await _ticketCategoryRepository.GetCategoryAsync();
 
-        return response; 
+        return response;
     }
 
     public async Task<BaseResponse<List<CategoryResponse>>> GetCategoryListAsync(BaseGetRequest query)
@@ -93,7 +93,19 @@ public class TicketCategoryService : ITicketCategoryService
     {
         var response = new BaseResponse<bool>();
         var entity = await _ticketCategoryRepository.GetByIdAsync(entityId);
-        response.Data = await _ticketCategoryRepository.DeleteAsync(entity, default);
+
+        entity.IsActive = false;
+        response.Data = await _ticketCategoryRepository.UpdateAsync(entity, default);
+
+        return response;
+    }
+    public async Task<BaseResponse<bool>> TicketCategoryUpdate(long entityId, TicketCategoryUpdateRequest model)
+    {
+        var response = new BaseResponse<bool>();
+        var entity = await _ticketCategoryRepository.GetByIdAsync(entityId);
+
+        entity.Update(model.Description);
+        response.Data = await _ticketCategoryRepository.UpdateAsync(entity, default);
 
         return response;
     }
